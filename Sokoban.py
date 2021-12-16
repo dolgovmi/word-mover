@@ -21,6 +21,7 @@ class Items(object):
 
     def __init__(self):
         self.items = {}
+        self.coins = 0
 
     def print(self):
         print("---")
@@ -33,10 +34,17 @@ class Items(object):
             return False
         return True
 
-    def is_crossable(self, name):
-        if name == 'wall':
+    def is_crossable(self, id):
+        item = self.items[id]
+        if item.t == '1':
             return False
         return True
+
+    def is_collectable(self, id):
+        item = self.items[id]
+        if item.t == '3':
+            return True
+        return False
 
     def add(self, id, item):
         self.items[id] = item
@@ -50,27 +58,80 @@ class Items(object):
             map_list[item.x][item.y] = int(item.t)
         return map_list
 
+    def get_items(self, x, y):
+        result = {}
+        for id in self.items:
+            item = self.items[id]
+            if x == item.x and y == item.y:
+                result[id] = item
+        return result
+
+    def get_player_id(self):
+        for id in self.items:
+            item = self.items[id]
+            if item.t == '2':
+                return id
+
+
+
+    def move(self, id, direction):
+        item = self.items[id]
+        x = item.x
+        y = item.y
+        if direction == 'up':
+            x -= 1
+            if x < 0:
+                x = 0
+        if direction == 'down':
+            x += 1
+            if x > 9:
+                x = 9
+        if direction == 'left':
+            y -= 1
+            if y < 0:
+                y = 0
+        if direction == 'right':
+            y += 1
+            if y > 9:
+                y = 9
+        next_items = self.get_items(x, y)
+        for next_item_id in next_items:
+            if not self.is_crossable(next_item_id):
+                return False
+            if self.is_collectable(next_item_id):
+                del self.items[next_item_id]
+                self.coins += 1
+        item.x = x
+        item.y = y
+        self.items[id] = item
+        return True
+
+    def get_coins(self):
+        return self.coins
+
+
+
 
 class Item(object):
 
-    def __init__(self, x, y, t):
+    def __init__(self, x, y, t, text):
         self.x = x
         self.y = y
         self.t = t
         name = ""
-        if cell == "1":
+        if t == "1":
             name = 'wall'
-        if cell == "2":
+        if t == "2":
             name = 'player'
-        if cell == "3":
+        if t == "3":
             name = 'coin'
-        if cell == "4":
+        if t == "4":
             name = 'door'
-        if cell == "5":
+        if t == "5":
             name = 'a'
-        if cell == "6":
+        if t == "6":
             name = 'is'
-        if cell == "7":
+        if t == "7":
             name = 'you'
         self.name = name
 
@@ -90,12 +151,12 @@ for line in lines:
     cells = line.split()
     for cell in cells:
         if cell != "0":
-            item = Item(x, y, cell)
+            item = Item(x, y, cell, '')
             items.add(id, item)
             id += 1
         y += 1
     x += 1
-map_list = items.map()
+
 
 # id = 1
 # for item in list:
@@ -111,6 +172,7 @@ map_list = items.map()
 #      print(car.color)
 map_file.close()
 
+
 ik = 0
 jk = 0
 remember = 0
@@ -118,10 +180,8 @@ nx = 100
 ny = 100
 dx = 64
 dy = 64
-my_font = pygame.font.SysFont("impact", 24)
+my_font = pygame.font.SysFont("impact", 40)
 text = my_font.render("", True, THECOLORS["red"])
-
-print(map_list)
 
 
 def draw_maze(map_list, nx, ny, dx, dy, ik, jk, remember):
@@ -149,17 +209,31 @@ def draw_maze(map_list, nx, ny, dx, dy, ik, jk, remember):
                 screen.blit(t_is, [x, y])
             elif map_list[i][j] == 7:
                 screen.blit(you, [x, y])
+    score_text = my_font.render("Собрано призов: " + str(items.coins), True, THECOLORS["blue"])
+    screen.blit(score_text, [400, 10])
     return (ik, jk)
 
-
+screen.fill(THECOLORS["white"])
 run = True
+id = items.get_player_id()
 while run == True:
 
+    is_game_changed = False
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             quit()
         if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_UP:
+                is_game_changed = items.move(id, 'up')
+            if event.key == pygame.K_DOWN:
+                is_game_changed = items.move(id, 'down')
+            if event.key == pygame.K_LEFT:
+                is_game_changed = items.move(id, 'left')
+            if event.key == pygame.K_RIGHT:
+                is_game_changed = items.move(id, 'right')
+        if is_game_changed:
             screen.fill(THECOLORS["white"])
+            map_list = items.map()
             ik, jk = draw_maze(map_list, nx, ny, dx, dy, ik, jk, remember)
             pygame.display.update()
     pygame.display.update()
