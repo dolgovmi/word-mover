@@ -1,0 +1,3 @@
+A 5 5 object
+t_is 6 5 modifier
+move 7 5 object
